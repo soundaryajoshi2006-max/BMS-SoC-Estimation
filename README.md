@@ -1,44 +1,42 @@
-# Closed-Loop Battery Management System (BMS) in Simulink
+# Open-Loop Battery Management System (BMS) with State of Charge (SoC) Estimation
 
-A beginner-friendly **Battery Management System (BMS)** designed in MATLAB/Simulink. This project upgrades traditional open-loop Coulomb Counting into a self-correcting, **Closed-Loop Feedback System** using a classic PI controller.
+A MATLAB/Simulink model demonstrating basic State of Charge (SoC) estimation for a Lithium-ion cell using the **Coulomb Counting** method. The model evaluates tracking performance by comparing an ideal plant cell against an estimation algorithm initialized with an intentional error bias.
 
 ## 🚀 Key Features
-* **Closed-Loop Error Correction**: Automatically corrects tracking errors caused by poor initial state-of-charge (SoC) guesses.
-* **Beginner-Friendly Architecture**: Built entirely using native Simulink math blocks, avoiding complex AI or script dependencies.
-* **Dual-Plot Tracking Dashboard**: Separates true states and estimated parameters onto distinct, non-overlapping axes for clean visualization.
+* **Dual-Track Simulation**: Houses a true physical cell model alongside an estimation block to track performance side-by-side.
+* **Coulomb Counting Algorithm**: Uses native mathematical gain and integrator configurations to estimate cell capacity utilization.
+* **Dynamic Testing Profile**: Implements an alternating pulse current source to test charge/discharge behavior over time.
 
 ---
 
 ## 📊 System Architecture Layout
 
-The model splits system dynamics across two isolated simulation tracks coupled by a proportional-integral tracking controller:
+The model splits the input current across two separate, open-loop tracks:
 
-1. **Actual Cell Plant Model (Top Track)**: Computes the real battery's state, integrating input current to generate `True SoC` and processing it through an Open Circuit Voltage (OCV) lookup table.
-2. **BMS Estimation Model (Bottom Track)**: Runs the calculation software. It starts with an intentional **10% error bias** (initial guess of 90% vs. 100% actual capacity).
-3. **Feedback Error Loop (Center)**: Continually subtracts Estimated Voltage from True Voltage. The resulting error drives a **PI Controller** to dynamically inject error-correcting adjustments back into the estimator.
+1. **Actual Cell State (Top Track)**: Models the physical battery cell. It integrates incoming current via a dedicated capacity gain block (`2.5 Ah`) to output `True SoC` starting from a full charge baseline (`1.0`).
+2. **BMS Algorithm (Bottom Track)**: Runs the estimation software (`BMS Guess`). It implements identical tracking math but initiates with a **10% error bias** (starting at `0.9` instead of `1.0`).
+3. **Signal Integration & Visualization**: A `Mux Block` groups both true and estimated state lines together, routing them into a single `Scope: SoC Tracking` display block.
 
 ---
 
 ## 🛠️ Parameters Blueprint
 
-| Subsystem / Block | Parameter | Target Setting | Purpose |
+| Subsystem / Block | Parameter Name | Value / Setting | Description |
 | :--- | :--- | :--- | :--- |
-| **Pulse Generator** | Amplitude / Period / Duty | `2.0 A` / `10.0 s` / `50%` | Dynamic test profile current |
-| **Plant / Cell Model**| Nominal Capacity | `2.5 Ah` | Cell core capacity rating |
-| | Integrator Initial SoC | `1.0 (100%)` | True battery state baseline |
-| **BMS Algorithm** | Integrator Initial SoC | `0.9 (90%)` | Simulated sensor error bias |
-| **PI Controller** | Proportional Gain (\(K_p\)) | `0.05` | Controls correction response speed |
-| | Integral Gain (\(K_i\)) | `0.001` | Wipes out lingering steady-state error |
-| **1-D Lookup Table** | Breakpoints (SoC) | `[0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]` | Shared battery OCV map points |
-| | Table Data (Voltage) | `[3.0, 3.3, 3.6, 3.7, 3.8, 4.0, 4.2]` | Shared battery chemistry voltages |
+| **Pulse Generator** | Pulse Amp <br> Period <br> Duty Cycle | `2A` <br> `10s` <br> `50%` | Inputs alternating current sequences into the cell blocks. |
+| **Plant / Cell Model** | Gain Formula <br> Capacity | `-1 / (Capacity * 3600)` <br> `2.5 Ah` | Converts physical current integration into SoC units. |
+| | Integrator (True SoC) | Initial Condition: `1.0` | Represents a completely full battery cell (100%). |
+| | Lookup Table | OCV Map | Generates Terminal Voltage from the True SoC value. |
+| **BMS Algorithm** | Gain Formula <br> Capacity | `-1 / (BMS_Cap * 3600)` <br> `2.5 Ah` | Computes open-loop Coulomb Counting software math. |
+| | Integrator (Est. SoC) | Initial Condition: `0.9` | Simulates an incorrect initial software guess (90%). |
 
 ---
 
 ## 🏃 How to Run the Simulation
 
-1. Clone or download this repository and open the `.slx` model file in **MATLAB/Simulink**.
-2. Locate the **Stop Time** input field on the top Simulink toolbar and set it to `100`.
-3. Click the green **Run** button to execute the simulation.
-4. Double-click the **Scope block** to pull open the multi-axis dashboard. 
+1. Open your downloaded `.slx` file in **MATLAB/Simulink**.
+2. Make sure the model properties reflect the **18650 Li-ion** battery profile specifications noted in the configuration profile table.
+3. Click the green **Run** button on the main toolbar.
+4. Double-click the **Scope: SoC Tracking** block.
 
-*Observe how the Estimated SoC curve automatically climbs from its flawed `0.9` startup point to perfectly lock onto the True SoC line over time.*
+*Observe how the open-loop estimated line tracks parallel to the actual state line, preserving the original 10% offset bias due to the lack of error feedback correction.*
